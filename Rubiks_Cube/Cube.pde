@@ -1,16 +1,21 @@
 class Cube {
   Piece[][][] pieces;
   int size;
-  float s = 10;
-  Move move = null;
+  float s;
+  int speed;
+  private Move move = null;
 
-  Cube(int size) {
+  Cube(int size, float s, int speed) {
     this.size = size;
+    this.s = s;
+    this.speed = speed;
     pieces = new Piece[size][size][size];
     for (int x = 0; x < size; x++) {
       for (int y = 0; y < size; y++) {
         for (int z = 0; z < size; z++) {
-          pieces[x][y][z] = new Piece();
+          if (x == 0 || x == size - 1 || y == 0 || y == size - 1 || z == 0 || z == size - 1) {
+            pieces[x][y][z] = new Piece(x, y, z, size);
+          }
         }
       }
     }
@@ -22,19 +27,19 @@ class Cube {
     for (int i = 0; i < size; i++) {
       for (int j = 0; j < size; j++) {
         if (axis == 0) { // x
-          if (dir) { // clockwise
+          if (dir) {
             temp[size-j-1][i] = pieces[layer][i][j];
           } else {
             temp[j][size-i-1] = pieces[layer][i][j];
           }
         } else if (axis == 1) { // y
-          if (dir) { // clockwise
+          if (dir) {
             temp[j][size-i-1] = pieces[i][layer][j];
           } else {
             temp[size-j-1][i] = pieces[i][layer][j];
           }
         } else { // z
-          if (dir) { // clockwise
+          if (dir) {
             temp[size-j-1][i] = pieces[i][j][layer];
           } else {
             temp[j][size-i-1] = pieces[i][j][layer];
@@ -59,28 +64,76 @@ class Cube {
     }
   }
 
+  boolean isMoving() {
+    return move != null;
+  }
+
+  void move(int axis, int layer, boolean dir) {
+    move = new Move(axis, layer, dir, speed);
+  }
+
   void show() {
     for (int x = 0; x < size; x++) {
       for (int y = 0; y < size; y++) {
         for (int z = 0; z < size; z++) {
-          pushMatrix();
-          if (move != null && move.isRotating(x,y,z)) {
-            if (move.axis == 0) {
-              rotateX(move.rotation);
-            } else if (move.axis == 1) {
-              rotateY(move.rotation);
-            } else {
-              rotateZ(move.rotation);
+          if (x == 0 || x == size - 1 || y == 0 || y == size - 1 || z == 0 || z == size - 1) {
+            pushMatrix();
+            if (move != null && move.isRotating(x, y, z)) {
+              if (move.axis == 0) {
+                rotateX(move.rotation);
+              } else if (move.axis == 1) {
+                rotateY(move.rotation);
+              } else {
+                rotateZ(move.rotation);
+              }
             }
+            float offset = (size - 1) / 2.0;
+            translate((x-offset)*s, (y-offset)*s, (z-offset)*s);
+            pieces[x][y][z].show(s/2);
+            popMatrix();
           }
-          float offset = (size - 1) / 2.0;
-          translate((x-offset)*s, (y-offset)*s, (z-offset)*s);
-          pieces[x][y][z].show(s/2);
-          popMatrix();
         }
       }
     }
     if (move != null) {
+      // draw black insides of the cube when moving
+      fill(0);
+      float w = size * s - 0.1;
+      float d = s - 0.1;
+      float offset = (size - 1) / 2.0;
+      for (int i = move.layer - 1; i < move.layer + 2; i++) {
+        if (i >= 0 && i < size) {
+          pushMatrix();
+          float t = (i-offset)*s;
+          if (i == move.layer) {
+          if (move.axis == 0) {
+            rotateX(move.rotation);
+            translate(t, 0, 0);
+            box(d, w, w);
+          } else if (move.axis == 1) {
+            rotateY(move.rotation);
+            translate(0, t, 0);
+            box(w, d, w);
+          } else {
+            rotateZ(move.rotation);
+            translate(0, 0, t);
+            box(w, w, d);
+          }
+          } else {
+            if (move.axis == 0) {
+              translate(t, 0, 0);
+              box(d, w, w);
+            } else if (move.axis == 1) {
+              translate(0, t, 0);
+              box(w, d, w);
+            } else {
+              translate(0, 0, t);
+              box(w, w, d);
+            }
+          }
+          popMatrix();
+        }
+      }
       move.update();
     }
     if (move != null && move.finished) {
